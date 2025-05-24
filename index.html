@@ -1,0 +1,2212 @@
+<html lang="en" style="--font-scale-factor: 1;"><head><script>(function(firebaseConfig, initialAuthToken, appId) {
+        window.__firebase_config = firebaseConfig;
+        window.__initial_auth_token = initialAuthToken;
+        window.__app_id = appId;
+            })("\n{\n  \"apiKey\": \"AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY\",\n  \"authDomain\": \"bard-frontend.firebaseapp.com\",\n  \"projectId\": \"bard-frontend\",\n  \"storageBucket\": \"bard-frontend.firebasestorage.app\",\n  \"messagingSenderId\": \"175205271074\",\n  \"appId\": \"1:175205271074:web:2b7bd4d34d33bf38e6ec7b\"\n}\n","eyJhbGciOiJSUzI1NiIsImtpZCI6ImY2ZTAxMDEwMWQ1NmE1NmIyZDY4Y2U3NDZkNmI5YzJlMmFlYzU5ZGQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6XC9cL2lkZW50aXR5dG9vbGtpdC5nb29nbGVhcGlzLmNvbVwvZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIwMTAwODQ1NjY0MDE5NTc0MjU3MCIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJleHAiOjE3NDgxMTEwNjEsImlhdCI6MTc0ODEwNzQ2MSwiYWxnIjoiUlMyNTYifQ.gD9zLJFAUHK2N7xhtk9SwPzhIwYTIAqYG8VdTYKlODqFN58mW5KkRt434KjqVUnlRg25g6wv-l8V9tQFzL56wTpvyu6q0VoC7DdH4L03eRQdnJrQ-D8a_6d5bFyNxEDrnMfEPGO-iO1SHJU5PiIG_YU67TRmMXLzz-3AWtmzOqpw_gJHUjEibZ2-TZJKY7YhbqpsbcBq8WHPyBHCK6DmlQLciuzA2JL0iLxiBnDz1lo8iucsO6xTlGhzHX2W8W5OBK2Ky7NryqbdPJmR2w2bEaj342uEzQJRQie_2s-udeicecwjMQJMJEePlriFyRpY67PYFm6lWkJMG5yRaBlhEQ","4570f0e22df9-exam_timer_firestore-830")</script><script>(function() {
+  // Ensure this script is executed only once
+  if (window.firebaseAuthBridgeScriptLoaded) {
+    return;
+  }
+  window.firebaseAuthBridgeScriptLoaded = true;
+
+  let nextTokenPromiseId = 0;
+
+  // Stores { resolve, reject } for ongoing token requests
+  const pendingTokenPromises = {};
+
+  // Listen for messages from the Host Application
+  window.addEventListener('message', function(event) {
+
+    const messageData = event.data;
+
+  if (messageData && messageData.type === 'RESOLVE_NEW_FIREBASE_TOKEN') {
+      const { success, token, error, promiseId } = messageData ?? {};
+      if (pendingTokenPromises[promiseId]) {
+        if (success) {
+          pendingTokenPromises[promiseId].resolve(token);
+        } else {
+          pendingTokenPromises[promiseId].reject(new Error(error || 'Token refresh failed from host.'));
+        }
+        delete pendingTokenPromises[promiseId];
+      }
+    }
+  });
+
+  // Expose a function for the Generated App to request a new Firebase token
+  window.requestNewFirebaseToken = function() {
+    const currentPromiseId = nextTokenPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingTokenPromises[currentPromiseId] = { resolve, reject };
+    });
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_NEW_FIREBASE_TOKEN',
+        promiseId: currentPromiseId
+      }, '*');
+    } else {
+      pendingTokenPromises[currentPromiseId].reject(new Error('No parent window to request token from.'));
+      delete pendingTokenPromises[currentPromiseId];
+    }
+    return promise;
+  };
+})();</script><script>let realOriginalGetUserMedia = null;
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  realOriginalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+}
+
+(function() {
+  if (navigator.mediaDevices && navigator.mediaDevices.__proto__) {
+    try {
+      Object.defineProperty(navigator.mediaDevices.__proto__, 'getUserMedia', {
+        get: function() {
+          return undefined; // Or throw an error
+        },
+        configurable: false
+      });
+    } catch (error) {
+      console.error("Error defining prototype getter:", error);
+    }
+  }
+})();
+
+(function() {
+  let originalGetUserMedia = realOriginalGetUserMedia;
+
+  const pendingMediaResolvers = {};
+  let nextMediaPromiseId = 0;
+
+  function interceptGetUserMedia() {
+    if (navigator.mediaDevices) {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: function(constraints) {
+          const mediaPromiseId = nextMediaPromiseId++;
+          const promise = new Promise((resolve, reject) => {
+            pendingMediaResolvers[mediaPromiseId] = (granted) => {
+              delete pendingMediaResolvers[mediaPromiseId];
+              if (granted) {
+                if (originalGetUserMedia) {
+                  originalGetUserMedia(constraints).then(resolve).catch(reject);
+                } else {
+                  reject(new Error("Original getUserMedia not available."));
+                }
+              } else {
+              reject(new DOMException('Permission denied', 'NotAllowedError'));
+            }
+          };
+        });
+
+        window.parent.postMessage({
+          type: 'requestMediaPermission',
+          constraints: constraints,
+          promiseId: mediaPromiseId,
+        }, '*');
+
+        return promise;
+      },
+      writable: false,
+      configurable: false
+    });
+    }
+  }
+
+  interceptGetUserMedia();
+
+  const observer = new MutationObserver(function(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'reconfigured' && mutation.name === 'getUserMedia' && mutation.object === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'attributes' && mutation.attributeName === 'getUserMedia' && mutation.target === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          if (node === navigator.mediaDevices) {
+            interceptGetUserMedia();
+          }
+        });
+      }
+    }
+  });
+
+  window.addEventListener('message', function(event) {
+    if (event.data) {
+      if (event.data.type === 'resolveMediaPermission') {
+        const { promiseId, granted } = event.data;
+        if (pendingMediaResolvers[promiseId]) {
+          pendingMediaResolvers[promiseId](granted);
+        }
+      }
+    }
+  });
+
+})();</script><script>(function() {
+  const originalFetch = window.fetch;
+  const googleLlmBaseApiUrls = [
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predictLongRunning',
+    'https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning',
+  ];
+
+  const pendingFetchResolvers = {};
+  let nextPromiseId = 0;
+
+  function handleStringInput(input, optionsArgument) {
+    const actualUrl = input;
+    const fetchCallArgs = [actualUrl, optionsArgument];
+    const effectiveOptions = optionsArgument || {};
+    const bodyForApiKeyCheck = effectiveOptions.body;
+    const bodyForPostMessage = effectiveOptions.body;
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  function handleRequestInput(input, optionsArgument) {
+    const actualUrl = input.url;
+    const fetchCallArgs = [input, optionsArgument];
+    const effectiveOptions = { method: input.method, headers: new Headers(input.headers) };
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (optionsArgument) {
+      if (optionsArgument.method) effectiveOptions.method = optionsArgument.method;
+      if (optionsArgument.headers) effectiveOptions.headers = new Headers(optionsArgument.headers);
+      if ('body' in optionsArgument) {
+        bodyForApiKeyCheck = optionsArgument.body;
+        bodyForPostMessage = optionsArgument.body;
+      } else {
+        bodyForApiKeyCheck = undefined;
+        bodyForPostMessage = input.body;
+      }
+    } else {
+      bodyForApiKeyCheck = undefined;
+      bodyForPostMessage = input.body;
+    }
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  window.fetch = function(input, optionsArgument) {
+    let actualUrl;
+    let fetchCallArgs;
+    let effectiveOptions = {};
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (typeof input === 'string') {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleStringInput(input, optionsArgument));
+    } else if (input instanceof Request) {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleRequestInput(input, optionsArgument));
+    } else {
+      return originalFetch.apply(window, [input, optionsArgument]);
+    }
+
+    effectiveOptions.method = effectiveOptions.method || 'GET';
+    if (!effectiveOptions.headers) {
+      effectiveOptions.headers = new Headers();
+    }
+
+
+    if (typeof actualUrl === 'string' && googleLlmBaseApiUrls.some((url) => actualUrl.startsWith(url))) {
+      let apiKeyIsNull = true;
+
+      const regex = new RegExp("models/([^:]+)");
+      const modelNameMatch = actualUrl.match(regex);
+      const modelName = modelNameMatch ? modelNameMatch[1] : 'unspecified';
+
+
+      try {
+        const urlObject = new URL(actualUrl);  // Use URL object for robust parsing
+        const apiKeyParam = urlObject.searchParams.get('key');
+        if (apiKeyParam) {
+          apiKeyIsNull = false;
+        }
+      } catch (e) {
+        // Continue checks even if URL parsing fails
+      }
+
+      if (apiKeyIsNull && effectiveOptions.headers) {
+        const h = new Headers(effectiveOptions.headers);
+        const apiKeyHeaderValue = h.get('X-API-Key') || h.get('x-api-key');
+        if (apiKeyHeaderValue) {
+          apiKeyIsNull = false;
+          return originalFetch.apply(window, fetchCallArgs);
+        }
+      }
+
+      if (apiKeyIsNull && effectiveOptions.method && ['POST', 'PUT', 'PATCH'].includes(effectiveOptions.method.toUpperCase()) && typeof bodyForApiKeyCheck === 'string') {
+        try {
+          const bodyData = JSON.parse(bodyForApiKeyCheck);
+          if (bodyData && bodyData.apiKey) {
+            apiKeyIsNull = false;
+            return originalFetch.apply(window, fetchCallArgs);
+          }
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+      }
+
+      if(apiKeyIsNull) {
+        const promiseId = nextPromiseId++;
+        const promise = new Promise((resolve) => {
+          pendingFetchResolvers[promiseId] = (resolvedResponse) => {
+            delete pendingFetchResolvers[promiseId];
+            resolve(resolvedResponse);
+          };
+        });
+
+        let serializedBodyForPostMessage;
+        if (typeof bodyForPostMessage === 'string' || bodyForPostMessage == null) {
+            serializedBodyForPostMessage = bodyForPostMessage;
+        } else if (bodyForPostMessage instanceof ReadableStream) {
+            serializedBodyForPostMessage = null;
+        } else {
+            try {
+                serializedBodyForPostMessage = JSON.stringify(bodyForPostMessage);
+            } catch (e) {
+                serializedBodyForPostMessage = null;
+            }
+        }
+
+        const messageOptions = {
+            method: effectiveOptions.method,
+            headers: Object.fromEntries(new Headers(effectiveOptions.headers).entries()),
+            body: serializedBodyForPostMessage
+        };
+
+        window.parent.postMessage({
+          type: 'requestFetch',
+          url: actualUrl,
+          modelName: 'models/' + modelName,
+          options: messageOptions,
+          promiseId: promiseId,
+        }, '*');
+
+        return promise;
+      }
+      return originalFetch.apply(window, fetchCallArgs);
+    }
+    return originalFetch.apply(window, fetchCallArgs);
+  };
+
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'resolveFetch') {
+      const { promiseId, response } = event.data;
+      if (pendingFetchResolvers[promiseId]) {
+        try {
+          const reconstructedResponse = new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: new Headers(response.headers),
+          });
+          pendingFetchResolvers[promiseId](reconstructedResponse);
+        } catch (error) {
+          pendingFetchResolvers[promiseId](new Response(null, { status: 500, statusText: "Interceptor Response Reconstruction Error" }));
+        }
+      }
+    }
+  });
+
+})();</script><script>(function() {
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+    /**
+   * Normalizes an error event or a promise rejection reason into a structured error object.
+   * @param {*} errorEventOrReason The error object or reason.
+   * @return {object} Structured error data { message, name, stack }.
+   */
+  function getErrorObject(errorEventOrReason) {
+    if (errorEventOrReason instanceof Error) {
+      return {
+        message: errorEventOrReason.message,
+        name: errorEventOrReason.name,
+        stack: errorEventOrReason.stack,
+      };
+    }
+    // Fallback for non-Error objects.
+    try {
+      return {
+        message: JSON.stringify(errorEventOrReason),
+        name: 'UnknownErrorType',
+        stack: null,
+      };
+    } catch (e) {
+      return {
+        message: String(errorEventOrReason),
+        name: 'UnknownErrorTypeNonStringifiable',
+        stack: null,
+      };
+    }
+  }
+
+  /**
+   * Converts an array of arguments (from log/error) into a single string.
+   * Handles Error objects specially to include their message and stack.
+   * @param {Array<*>} args - Arguments passed to console methods.
+   * @return {string} A string representation of the arguments.
+   */
+  function stringifyArgs(args) {
+    return args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          const {message, stack} = arg;
+          return `Error: ${message}${stack ? ('\nStack: ' + stack) : ''}`;
+        }
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg);
+          } catch (error) {
+            return '[Circular Object]';
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  console.log = function(...args) {
+    const logString = stringifyArgs(args);
+    window.parent.postMessage({ type: 'log', message: logString }, '*');
+    originalConsoleLog.apply(console, args);
+  };
+
+  console.error = function(...args) {
+    let errorData;
+    if (args.length > 0 && args[0] instanceof Error) {
+      const err = args[0];
+      // If the first arg is an Error, capture its details.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        ...getErrorObject(err),
+        rawArgsString: stringifyArgs(args.slice(1)),
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      // If not an Error object, treat all args as a general error message.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        message: stringifyArgs(args),
+        name: 'ConsoleLoggedError',
+        stack: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    window.parent.postMessage(errorData, '*');
+    originalConsoleError.apply(console, args);
+  };
+
+  // Listen for global unhandled synchronous errors.
+  window.addEventListener('error', function(event) {
+    const errorDetails = event.error ? getErrorObject(event.error) : {
+      message: event.message,
+      name: 'GlobalError',
+      stack: null,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'global',
+      ...errorDetails,
+      message: errorDetails.message || event.message,
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+  // Listen for unhandled promise rejections (asynchronous errors).
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDetails = getErrorObject(event.reason);
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'unhandledrejection',
+      ...errorDetails,
+      message: errorDetails.message || 'Unhandled Promise Rejection',
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Info Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-scale-factor: 1;
+
+            --bg-dark: #0f172a;
+            --card-bg-dark: #1e293b;
+            --text-primary-dark: #e2e8f0;
+            --text-secondary-dark: #94a3b8;
+            --border-dark: #334155;
+            --accent-color-dark: #38bdf8;
+            --accent-color-hover-dark: #0ea5e9;
+            --danger-color-dark: #f43f5e;
+            --danger-color-hover-dark: #e11d48;
+            --success-color-dark: #22d3ee;
+            --success-color-hover-dark: #06b6d4;
+            --timer-adjust-btn-bg-dark: #334155;
+            --timer-adjust-btn-hover-bg-dark: #475569;
+            --input-bg-dark: var(--bg-dark);
+            --input-text-dark: var(--text-primary-dark);
+            --input-border-dark: var(--border-dark);
+            --btn-active-bg-dark: var(--accent-color-dark);
+            --btn-active-text-dark: #0f172a;
+
+
+            --bg-light: #f8fafc;
+            --card-bg-light: #ffffff;
+            --text-primary-light: #0f172a;
+            --text-secondary-light: #64748b;
+            --border-light: #cbd5e1;
+            --accent-color-light: #0ea5e9;
+            --accent-color-hover-light: #0284c7;
+            --danger-color-light: #f43f5e;
+            --danger-color-hover-light: #e11d48;
+            --success-color-light: #22d3ee;
+            --success-color-hover-light: #06b6d4;
+            --timer-adjust-btn-bg-light: #e2e8f0;
+            --timer-adjust-btn-hover-bg-light: #cbd5e1;
+            --input-bg-light: #f1f5f9;
+            --input-text-light: var(--text-primary-light);
+            --input-border-light: var(--border-light);
+            --btn-active-bg-light: var(--accent-color-light);
+            --btn-active-text-light: white;
+
+
+            --bg-color: var(--bg-dark);
+            --card-bg-color: var(--card-bg-dark);
+            --text-primary-color: var(--text-primary-dark);
+            --text-secondary-color: var(--text-secondary-dark);
+            --border-color: var(--border-dark);
+            --accent-color: var(--accent-color-dark);
+            --accent-color-hover: var(--accent-color-hover-dark);
+            --danger-color: var(--danger-color-dark);
+            --danger-color-hover: var(--danger-color-hover-dark);
+            --success-color: var(--success-color-dark);
+            --success-color-hover: var(--success-color-hover-dark);
+            --timer-adjust-btn-bg: var(--timer-adjust-btn-bg-dark);
+            --timer-adjust-btn-hover-bg: var(--timer-adjust-btn-hover-bg-dark);
+            --input-bg-color: var(--input-bg-dark);
+            --input-text-color: var(--input-text-dark);
+            --input-border-color: var(--input-border-dark);
+            --btn-active-bg: var(--btn-active-bg-dark);
+            --btn-active-text: var(--btn-active-text-dark);
+        }
+
+        body.theme-light {
+            --bg-color: var(--bg-light);
+            --card-bg-color: var(--card-bg-light);
+            --text-primary-color: var(--text-primary-light);
+            --text-secondary-color: var(--text-secondary-light);
+            --border-color: var(--border-light);
+            --accent-color: var(--accent-color-light);
+            --accent-color-hover: var(--accent-color-hover-light);
+            --danger-color: var(--danger-color-light);
+            --danger-color-hover: var(--danger-color-hover-light);
+            --success-color: var(--success-color-light);
+            --success-color-hover: var(--success-color-hover-light);
+            --timer-adjust-btn-bg: var(--timer-adjust-btn-bg-light);
+            --timer-adjust-btn-hover-bg: var(--timer-adjust-btn-hover-bg-light);
+            --input-bg-color: var(--input-bg-light);
+            --input-text-color: var(--input-text-light);
+            --input-border-color: var(--input-border-light);
+            --btn-active-bg: var(--btn-active-bg-light);
+            --btn-active-text: var(--btn-active-text-light);
+        }
+
+        html {
+            font-size: calc(16px * var(--font-scale-factor));
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        @media (min-width: 768px) {
+            .app-container {
+                padding: 1.25rem;
+            }
+        }
+
+
+        /* Header */
+        .app-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .header-left {
+            margin-bottom: 0.5rem;
+        }
+        @media (min-width: 640px) {
+            .header-left { margin-bottom: 0; }
+        }
+        .global-controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .control-button {
+            background-color: var(--card-bg-color);
+            color: var(--text-primary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 0.45rem 0.6rem; /* Adjusted padding for consistency */
+            min-width: 2.5rem; /* Ensure minimum width */
+            height: 2.5rem; /* Ensure consistent height */
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: background-color 0.2s, border-color 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
+        }
+        .control-button:hover:not(:disabled) {
+            background-color: var(--bg-color);
+        }
+        .control-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .control-button svg { /* Default icon size */
+            width: 1rem; height: 1rem;
+        }
+         .btn-setup-exam svg { /* Specific icon size for setup button */
+            width: 1.25rem; height: 1.25rem;
+        }
+        #languageToggleBtn { /* Specific style for globe emoji button */
+            font-size: 1.1rem; /* Adjust emoji size */
+            padding: 0.35rem 0.5rem; /* Slightly adjust padding if needed */
+        }
+
+        .font-size-controls button { margin: 0 0.1rem; }
+        .current-time-container {
+            display: flex;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary-color);
+            margin-left: 0.5rem;
+        }
+        #currentTimePrefix { margin-right: 0.3em; color: var(--text-secondary-color); font-weight: 500;}
+
+
+        /* Timer Display */
+        .timer-display-section {
+            background-color: var(--card-bg-color);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .timer-status-label {
+            font-size: 1.5rem;
+            color: var(--text-secondary-color);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .main-timer-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .timer-adjust-button {
+            background-color: var(--timer-adjust-btn-bg);
+            color: var(--text-primary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            font-size: 1.5rem;
+            font-weight: 300;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, opacity 0.3s;
+            opacity: 0; /* Hidden by default, shown when details confirmed */
+            pointer-events: none;
+        }
+        .timer-adjust-button:hover:not(:disabled) {
+            background-color: var(--timer-adjust-btn-hover-bg);
+        }
+        .timer-adjust-button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+        .timer-adjust-button:disabled {
+            opacity: 0.4 !important;
+            cursor: not-allowed;
+        }
+        .timer-value {
+            font-size: clamp(3rem, 16vw, 6.5rem);
+            font-weight: 900;
+            color: var(--text-primary-color);
+            line-height: 1;
+            letter-spacing: -0.025em;
+            min-height: 1.1em;
+            cursor: pointer;
+        }
+        .quick-edit-timer-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--card-bg-color);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 10;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+        .quick-edit-timer-overlay.active { display: flex; }
+        .quick-edit-timer-overlay .duration-inputs input {
+            background-color: var(--input-bg-color);
+            color: var(--input-text-color);
+            border: 1px solid var(--input-border-color);
+            border-radius: 0.25rem;
+            padding: 0.3rem;
+            font-size: 1rem;
+            width: 50px;
+            text-align: center;
+        }
+        .quick-edit-timer-overlay .duration-inputs { display: flex; gap: 0.3rem; justify-content: center; margin-bottom: 0.5rem;}
+        .quick-edit-timer-overlay .quick-edit-actions { display: flex; justify-content: center; gap: 0.5rem;}
+        .quick-edit-timer-overlay button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+        }
+
+
+        .timer-actions button {
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 0 0.4rem;
+            border: none;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1); /* Enhanced shadow */
+        }
+        body.theme-light .timer-actions button {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .timer-actions button:hover:not(:disabled) {
+             box-shadow: 0 5px 10px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.1);
+        }
+        body.theme-light .timer-actions button:hover:not(:disabled) {
+             box-shadow: 0 5px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.07);
+        }
+        .timer-actions button:active { transform: scale(0.97); }
+        .btn-start-timer { background-color: var(--success-color); color: white; }
+        .btn-start-timer:hover:not(:disabled) { background-color: var(--success-color-hover); }
+        .btn-stop-timer, .btn-reset-timer { background-color: var(--danger-color); color: white; }
+        .btn-stop-timer:hover:not(:disabled), .btn-reset-timer:hover:not(:disabled) { background-color: var(--danger-color-hover); }
+        .timer-actions button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            background-color: var(--timer-adjust-btn-bg);
+            color: var(--text-secondary-color);
+        }
+        /* Progress bar styles removed */
+
+        /* Exam Info Display Panel (Post-Confirmation) */
+        .exam-info-display {
+            background-color: var(--card-bg-color);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.9rem 1.25rem;
+        }
+        .info-display-item {
+            font-size: 1rem;
+        }
+        .info-display-item .label {
+            display: block;
+            color: var(--text-secondary-color);
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+        }
+        .info-display-item .data {
+            font-weight: 600;
+            color: var(--text-primary-color);
+            font-size: 1rem;
+        }
+
+
+        /* Settings Modal Revamp */
+        .settings-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.75); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .settings-modal-overlay.active { opacity: 1; visibility: visible; }
+        .settings-modal-content {
+            background-color: var(--card-bg-color);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            width: 90%;
+            max-width: min(550px, 90vw);
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .settings-modal-content h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary-color);
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+        .settings-modal-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .settings-group {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+        }
+        .settings-group strong.group-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.6rem;
+            color: var(--text-primary-color);
+        }
+        .settings-modal-grid .detail-item { font-size: 0.85rem; margin-bottom: 0.5rem; }
+        .settings-modal-grid .detail-item:last-child { margin-bottom: 0; }
+        .settings-modal-grid .detail-item strong {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+            color: var(--text-secondary-color);
+            display: block;
+        }
+        .settings-modal-grid .detail-item .value,
+        .settings-modal-grid .detail-item select,
+        .settings-modal-grid .detail-item .duration-inputs input,
+        .settings-modal-grid .detail-item input[type="time"],
+        .settings-modal-grid .detail-item input[type="text"],
+        .settings-modal-grid .detail-item input[type="number"].minutes-only-input
+         {
+            padding: 0.4rem 0.5rem;
+            font-size: 0.85rem;
+            background-color: var(--input-bg-color);
+            color: var(--input-text-color);
+            border: 1px solid var(--input-border-color);
+            border-radius: 0.25rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .settings-modal-grid .detail-item input[type="number"].minutes-only-input {
+            width: calc(50% - 0.15rem);
+            text-align: center;
+        }
+        .settings-modal-grid .detail-item .value[contenteditable="true"] {
+             display: block;
+        }
+        .settings-modal-grid .detail-item .duration-inputs { display: flex; gap: 0.3rem; }
+        .settings-modal-grid .detail-item .duration-inputs input { text-align: center; width: calc(33% - 0.2rem); }
+
+        .language-button-group button {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.8rem;
+            margin-right: 0.3rem;
+            background-color: var(--input-bg-color);
+            color: var(--input-text-color);
+            border: 1px solid var(--input-border-color);
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .language-button-group button.active {
+            background-color: var(--btn-active-bg) !important;
+            color: var(--btn-active-text) !important;
+            border-color: var(--btn-active-bg) !important;
+        }
+        .exam-time-inputs { display: flex; gap: 0.4rem; align-items: center; }
+        .exam-time-inputs input[type="time"] { width: auto; flex-grow: 1; }
+        .exam-time-inputs span { margin: 0 0.2rem; color: var(--text-secondary-color); }
+
+        .settings-modal-actions {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+        .settings-modal-actions .action-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .settings-modal-actions button {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        /* App Footer */
+        .app-footer {
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: auto;
+            font-size: 0.8rem;
+            color: var(--text-secondary-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .fullscreen-toggle {
+            position: fixed;
+            bottom: 1.25rem;
+            right: 1.25rem;
+            background-color: var(--card-bg-color);
+            color: var(--text-primary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 2.75rem;
+            height: 2.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: background-color 0.2s, transform 0.2s;
+            z-index: 1000;
+        }
+        .fullscreen-toggle:hover { background-color: var(--bg-color); transform: scale(1.1); }
+        .fullscreen-toggle svg { width: 1.375rem; height: 1.375rem; }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+
+        /* Custom modal for alerts/confirmations & User Manual */
+        .custom-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); display: none; /* Hidden by default */
+            justify-content: center; align-items: center; z-index: 2000;
+            padding: 1rem; /* Padding for smaller screens */
+        }
+        .custom-modal-content {
+            background-color: var(--card-bg-color);
+            padding: 1.5rem; border-radius: 0.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%; max-width: 500px; /* Slightly wider for manual */
+            text-align: center;
+            max-height: 80vh; /* Limit height */
+            overflow-y: auto; /* Allow scrolling for manual */
+        }
+        .custom-modal-content p { margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-primary-color); }
+        .custom-modal-actions button {
+            padding: 0.5rem 1rem; font-size: 0.85rem; margin: 0.5rem 0.25rem 0; /* Added top margin */
+            border-radius: 0.375rem; cursor: pointer;
+        }
+        .btn-modal-confirm-action { background-color: var(--accent-color); color: var(--btn-active-text); }
+        .btn-modal-confirm-action:hover { background-color: var(--accent-color-hover); }
+        .btn-modal-cancel-action { background-color: var(--timer-adjust-btn-bg); color: var(--text-primary-color); border: 1px solid var(--border-color); }
+        .btn-modal-cancel-action:hover { background-color: var(--timer-adjust-btn-hover-bg); }
+
+        #userManualModalTitle {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary-color);
+        }
+        #userManualModalContentArea {
+            text-align: left;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-secondary-color);
+        }
+        #userManualModalContentArea h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary-color);
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        #userManualModalContentArea ul {
+            list-style-type: disc;
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+         #userManualModalContentArea p {
+            margin-bottom: 0.75rem;
+        }
+
+
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.16 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.mr-1{margin-right:0.25rem}.inline-block{display:inline-block}.h-4{height:1rem}.h-5{height:1.25rem}.w-4{width:1rem}.w-5{width:1.25rem}.flex-grow{flex-grow:1}</style></head>
+<body class="theme-dark"> <div class="app-container">
+        <header class="app-header">
+            <div class="header-left">
+                 <button id="setupExamBtn" class="control-button btn-setup-exam" title="Setup Exam"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.137-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"></path> <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path> </svg></button>
+            </div>
+            <div class="global-controls">
+                <div class="font-size-controls">
+                    <button id="decreaseFontBtn" class="control-button" aria-label="Decrease font size" title="Decrease font size">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"></path></svg>
+                    </button>
+                    <button id="increaseFontBtn" class="control-button" aria-label="Increase font size" title="Increase font size">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path></svg>
+                    </button>
+                </div>
+                <button id="themeToggleBtn" class="control-button" title="Light Mode">
+                    <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display: block;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"></path></svg>
+                    <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"></path></svg>
+                </button>
+                <button id="languageToggleBtn" class="control-button" title="繁體中文" style="font-size: 1.1rem; padding: 0.2rem 0.4rem; line-height: 1;">
+                     🌐︎
+                </button>
+                <button id="userManualBtn" class="control-button" data-key="userManualBtn" title="User Manual">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path>
+                    </svg>
+                </button>
+
+                <div class="current-time-container">
+                    <span id="currentTimePrefix">Current Time: </span><span id="currentTimeDisplay">01:24:56</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow">
+            <section class="timer-display-section">
+                <div class="timer-status-label" data-key="timeLeftLabel">Time Left</div>
+                <div class="main-timer-area">
+                    <button id="minusMinuteBtn" class="timer-adjust-button" aria-label="Subtract one minute" title="Subtract one minute" style="opacity: 1; pointer-events: auto;">–</button>
+                    <div id="examTimeLeftDisplay" class="timer-value" title="Click to Quick Edit Time">01:30:00</div>
+                    <button id="plusMinuteBtn" class="timer-adjust-button" aria-label="Add one minute" title="Add one minute" style="opacity: 1; pointer-events: auto;">+</button>
+                    <div id="quickEditTimerOverlay" class="quick-edit-timer-overlay">
+                        <div class="duration-inputs">
+                            <input type="number" id="quickEditHours" aria-label="Quick Edit Hours" placeholder="HH" min="0">
+                            <input type="number" id="quickEditMinutes" aria-label="Quick Edit Minutes" placeholder="MM" min="0" max="59">
+                            <input type="number" id="quickEditSeconds" aria-label="Quick Edit Seconds" placeholder="SS" min="0" max="59">
+                        </div>
+                        <div class="quick-edit-actions">
+                            <button id="quickEditSetBtn" class="control-button btn-start-timer" data-key="quickEditSetBtn">Set</button>
+                            <button id="quickEditCancelBtn" class="control-button btn-stop-timer" data-key="cancelBtn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="timer-actions">
+                    <button id="startExamBtn" class="btn-start-timer" data-key="startBtn">Start</button>
+                    <button id="stopExamBtn" class="btn-stop-timer" data-key="stopBtn" disabled="">Stop</button>
+                    <button id="resetExamBtn" class="btn-reset-timer" data-key="resetBtn">Reset</button>
+                </div>
+                </section>
+
+            <section id="examInfoDisplayPanel" class="exam-info-display" style="display: none;">
+                </section>
+            </main>
+
+        <div id="settingsModal" class="settings-modal-overlay active">
+            <div class="settings-modal-content">
+                <h2 data-key="setupModalTitle">Exam Setup</h2>
+                <div class="settings-modal-grid">
+                    <div class="settings-group">
+                        <strong class="group-title" data-key="modalGroupCentreInfo">Centre Information</strong>
+                        <div class="detail-item">
+                            <strong data-key="headerCentreNameLabel">Centre Name:</strong>
+                            <span id="modalSchoolInfoName" class="value" data-key="schoolInfoNamePlaceholder" contenteditable="true" data-placeholder="ABC Secondary School">ABC Secondary School</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong data-key="headerCentreNumLabel">Centre Number:</strong>
+                            <span id="modalSchoolInfoCentreNumber" class="value" data-key="schoolInfoCentreNumberPlaceholder" contenteditable="true" data-placeholder="A1234">A1234</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <strong class="group-title" data-key="modalGroupExamDetails">Exam Details</strong>
+                         <div class="detail-item">
+                            <strong data-key="footerSubjectLabel">Subject:</strong>
+                            <span id="modalInfoSubject" class="value" data-key="infoSubjectPlaceholder" contenteditable="true" data-placeholder="Chinese Language">Chinese Language</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong data-key="footerPaperLabel">Paper:</strong>
+                            <span id="modalInfoPaper" class="value" data-key="infoPaperPlaceholder" contenteditable="true" data-placeholder="Paper 1">Paper 1</span>
+                        </div>
+                    </div>
+
+                     <div class="settings-group">
+                         <strong class="group-title" data-key="modalGroupTiming">Timing</strong>
+                        <div class="detail-item duration-container">
+                            <strong data-key="modalDurationLabel">Duration (Minutes):</strong>
+                            <div>
+                                <input type="number" id="modalFooterExamMinutes" aria-label="Minutes" placeholder="MM" min="0" class="minutes-only-input">
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <strong data-key="modalExamTimeLabel">Exam Time</strong>
+                            <div class="exam-time-inputs">
+                                <input type="time" id="modalExamStartTime" aria-label="Exam Start Time">
+                                <span>-</span>
+                                <input type="time" id="modalExamEndTime" aria-label="Exam End Time">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <strong class="group-title" data-key="modalGroupExamLanguage">Exam Language</strong>
+                        <div class="detail-item">
+                            <strong data-key="modalExamLanguageLabel">Language:</strong>
+                            <div class="language-button-group">
+                                <button type="button" class="lang-btn" data-lang="zh-HK" data-key="langBtnChinese">中文</button>
+                                <button type="button" class="lang-btn active" data-lang="en" data-key="langBtnEnglish">English</button>
+                            </div>
+                            <input type="hidden" id="modalSelectedExamLanguage" value="en">
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-modal-actions">
+                    <div class="action-group">
+                        <button id="modalDownloadHtmlBtn" class="control-button btn-modal-download">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block mr-1 h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path></svg>
+                            <span data-key="downloadBtnText">Download App</span>
+                        </button>
+                        <span></span> </div>
+                    <div class="action-group">
+                        <button id="cancelSettingsBtn" class="control-button btn-modal-cancel" data-key="cancelBtn">Cancel</button>
+                        <button id="confirmSettingsBtn" class="control-button btn-modal-confirm" data-key="confirmModalBtn">Confirm &amp; Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            <span data-key="appFooterText">Created by Mr. Louis Chung / 由鍾永老師製作</span>
+        </footer>
+
+        <button id="fullscreenToggleBtn" class="fullscreen-toggle" aria-label="Toggle Fullscreen" title="Toggle Fullscreen">
+            <svg id="fullscreenIconOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9.75 9.75M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L14.25 9.75M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9.75 14.25m10.5 6L14.25 14.25"></path>
+            </svg>
+            <svg id="fullscreenIconClose" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:none;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25"></path>
+            </svg>
+        </button>
+
+        <div id="customAlertModal" class="custom-modal-overlay">
+            <div class="custom-modal-content">
+                <p id="customAlertModalMessage"></p>
+                <div id="customAlertModalActions" class="custom-modal-actions">
+                    </div>
+            </div>
+        </div>
+
+        <div id="userManualModal" class="custom-modal-overlay">
+            <div class="custom-modal-content">
+                <h3 id="userManualModalTitle" data-key="userManualTitle">User Manual</h3>
+                <div id="userManualModalContentArea">
+                    </div>
+                <div class="custom-modal-actions">
+                    <button id="closeUserManualBtn" class="control-button btn-modal-confirm-action" data-key="okBtn">OK</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // Firebase SDK imports
+        import { initializeApp as initializeFirebaseApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, query, addDoc, getDocs, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-exam-timer-app';
+
+        let fbApp;
+        let fbAuth;
+        let fbDb;
+        let userId;
+        let isAuthReady = false;
+
+        try {
+            fbApp = initializeFirebaseApp(firebaseConfig);
+            fbAuth = getAuth(fbApp);
+            fbDb = getFirestore(fbApp);
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+            showCustomAlert("Error initializing Firebase. Some features might not work.");
+        }
+
+        let examTimerInterval;
+        let examTotalSeconds, examSecondsRemaining, examStartTime, examEndTime;
+        let isTimerRunning = false;
+        let detailsConfirmed = false;
+        let currentLanguage = 'en';
+        let currentTheme = 'theme-dark';
+        let currentFontScaleFactor = 1;
+        const FONT_SCALE_STEP = 0.1;
+        const MIN_FONT_SCALE = 0.7;
+        const MAX_FONT_SCALE = 1.5;
+
+        let confirmedExamDetails = {
+            centreName: "",
+            centreNumber: "",
+            subject: "",
+            paper: "",
+            durationM: "90",
+            durationH: "0",
+            durationS: "0",
+            userStartTime: "08:30",
+            userEndTime: "",
+            examLanguage: "en"
+        };
+
+
+        const synth = new Tone.Synth().toDestination();
+
+        const uiStrings = {
+            'en': {
+                setupExamBtn: "Setup Exam", editDetailsBtn: "Edit Details", modalGroupCentreInfo: "Centre Information",
+                modalGroupExamDetails: "Exam Details", modalGroupTiming: "Timing", modalGroupExamLanguage: "Exam Language",
+                headerCentreNameLabel: "Centre Name:", schoolInfoNamePlaceholder: "ABC Secondary School",
+                headerCentreNumLabel: "Centre Number:", schoolInfoCentreNumberPlaceholder: "A1234",
+                downloadBtnText: "Download App", confirmModalBtn: "Confirm & Close", cancelBtn: "Cancel",
+                setupModalTitle: "Exam Setup", themeLabel: "Theme:", languageLabel: "Language:",
+                switchToLight: "Light Mode", switchToDark: "Dark Mode", switchToChinese: "繁體中文",
+                switchToEnglish: "English", currentTimePrefix: "Current Time: ", timeLeftLabel: "Time Left",
+                startBtn: "Start", stopBtn: "Stop", resetBtn: "Reset", quickEditSetBtn: "Set",
+                footerSubjectLabel: "Subject:", infoSubjectPlaceholder: "Chinese Language",
+                footerPaperLabel: "Paper:", infoPaperPlaceholder: "Paper 1",
+                footerDurationLabel: "Duration:",
+                modalDurationLabel: "Duration (Minutes):",
+                modalExamTimeLabel: "Exam Time",
+                footerExamTimeLabel: "Exam Time:", modalExamLanguageLabel: "Language:", langBtnChinese: "中文",
+                langBtnEnglish: "English", timesUpMessage: "Time's Up!",
+                appFooterText: "Created by Mr. Louis Chung / 由鍾永老師製作",
+                generalError: "An error occurred. Please try again.",
+                okBtn: "OK", userManualBtn: "User Manual",
+                userManualTitle: "User Manual",
+                userManualContent: `
+                    <h3>General Controls</h3>
+                    <ul>
+                        <li><strong>Setup Exam (Gear Icon):</strong> Click to open settings for exam details.</li>
+                        <li><strong>Font Size (+/-):</strong> Adjust the app's text size.</li>
+                        <li><strong>Theme (Sun/Moon Icon):</strong> Switch between light and dark modes.</li>
+                        <li><strong>Language (Globe Icon):</strong> Change UI language (English/Chinese).</li>
+                        <li><strong>User Manual (Book Icon):</strong> View this guide.</li>
+                        <li><strong>Current Time:</strong> Shows current Hong Kong time.</li>
+                    </ul>
+                    <h3>Timer</h3>
+                    <ul>
+                        <li><strong>Main Display (HH:MM:SS):</strong> Shows remaining time. Click to edit when timer is paused or reset.</li>
+                        <li><strong>+/- Buttons:</strong> Add/subtract 1 minute (when timer is paused/reset and details are set).</li>
+                        <li><strong>Start/Stop/Reset:</strong> Controls for the timer.</li>
+                    </ul>
+                    <h3>Exam Setup (Settings Modal)</h3>
+                    <ul>
+                        <li><strong>Centre Information:</strong> Enter centre name and number.</li>
+                        <li><strong>Exam Details:</strong> Specify subject and paper.</li>
+                        <li><strong>Timing:</strong>
+                            <ul>
+                                <li><em>Duration (Minutes):</em> Set total exam time in minutes.</li>
+                                <li><em>Exam Time:</em> Define official start/end times (end time auto-calculates).</li>
+                            </ul>
+                        </li>
+                        <li><strong>Exam Language:</strong> Select the display language for the exam.</li>
+                        <li><strong>Download App:</strong> Saves the app as an HTML file.</li>
+                        <li><strong>Confirm & Close:</strong> Apply settings and close.</li>
+                    </ul>
+                    <p>Preferences (theme, language, font) and the last exam setup are saved in your browser.</p>
+                `,
+                hourUnit: "hour", hoursUnit: "hours", minuteUnit: "minute", minutesUnit: "minutes"
+            },
+            'zh-HK': {
+                setupExamBtn: "設定考試", editDetailsBtn: "編輯資料", modalGroupCentreInfo: "試場資訊",
+                modalGroupExamDetails: "考試詳情", modalGroupTiming: "時間設定", modalGroupExamLanguage: "應考語言",
+                headerCentreNameLabel: "試場：", schoolInfoNamePlaceholder: "香城中學",
+                headerCentreNumLabel: "試場編號：", schoolInfoCentreNumberPlaceholder: "A1234",
+                downloadBtnText: "下載應用程式", confirmModalBtn: "確認並關閉", cancelBtn: "取消",
+                setupModalTitle: "考試設定", themeLabel: "主題：", languageLabel: "語言：",
+                switchToLight: "淺色模式", switchToDark: "深色模式", switchToChinese: "繁體中文",
+                switchToEnglish: "English", currentTimePrefix: "現在時間: ", timeLeftLabel: "剩餘時間",
+                startBtn: "開始", stopBtn: "停止", resetBtn: "重設", quickEditSetBtn: "設定",
+                footerSubjectLabel: "科目：", infoSubjectPlaceholder: "中國語文",
+                footerPaperLabel: "試卷：", infoPaperPlaceholder: "試卷一",
+                footerDurationLabel: "時長：",
+                modalDurationLabel: "時長 (分鐘)：",
+                modalExamTimeLabel: "考試時間",
+                footerExamTimeLabel: "考試時間：", modalExamLanguageLabel: "應考語言:", langBtnChinese: "中文",
+                langBtnEnglish: "English", timesUpMessage: "時間到！",
+                appFooterText: "由鍾永老師製作",
+                generalError: "發生錯誤，請再試一次。",
+                okBtn: "確定", userManualBtn: "使用說明",
+                userManualTitle: "使用說明",
+                userManualContent: `
+                    <h3>一般控制</h3>
+                    <ul>
+                        <li><strong>設定考試 (齒輪圖示):</strong> 開啟設定視窗以配置考試詳情。</li>
+                        <li><strong>字體大小 (+/-):</strong> 增大或縮小應用程式的字體大小。</li>
+                        <li><strong>主題 (太陽/月亮圖示):</strong> 切換淺色和深色模式。</li>
+                        <li><strong>語言 (地球圖示):</strong> 切換使用者介面語言 (英文/中文)。</li>
+                        <li><strong>使用說明 (書本圖示):</strong> 顯示此使用說明。</li>
+                        <li><strong>現在時間:</strong> 顯示目前香港時間。</li>
+                    </ul>
+                    <h3>計時器</h3>
+                    <ul>
+                        <li><strong>主顯示 (HH:MM:SS):</strong> 顯示剩餘時間。當計時器暫停或重設時，點擊可快速編輯時間。</li>
+                        <li><strong>+/- 按鈕:</strong> 增加或減少計時器一分鐘 (僅在計時器暫停/重設且詳情已設定時可用)。</li>
+                        <li><strong>開始/停止/重設按鈕:</strong> 控制考試計時器。</li>
+                    </ul>
+                    <h3>考試設定 (設定視窗)</h3>
+                    <ul>
+                        <li><strong>試場資訊:</strong> 設定試場名稱和編號。</li>
+                        <li><strong>考試詳情:</strong> 設定科目和試卷。</li>
+                        <li><strong>時間設定:</strong>
+                            <ul>
+                                <li><em>時長 (分鐘):</em> 輸入總考試時長 (分鐘)。</li>
+                                <li><em>考試時間:</em> 設定官方開始和結束時間以供顯示。如果提供了開始時間和時長，結束時間將自動計算。</li>
+                            </ul>
+                        </li>
+                        <li><strong>應考語言:</strong> 選擇考試內容本身的語言 (僅供顯示)。</li>
+                        <li><strong>下載應用程式:</strong> 將目前應用程式下載為獨立的 HTML 檔案。</li>
+                        <li><strong>確認並關閉:</strong> 儲存設定並關閉視窗。</li>
+                    </ul>
+                    <p>您的偏好設定 (主題、語言、字體大小) 和上次的考試設定會自動儲存在您的瀏覽器中。</p>
+                `,
+                hourUnit: "小時", hoursUnit: "小時", minuteUnit: "分鐘", minutesUnit: "分鐘"
+            }
+        };
+
+        const docElement = document.documentElement;
+        const bodyElement = document.body;
+        const setupExamBtn = document.getElementById('setupExamBtn');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIconSun = document.getElementById('themeIconSun');
+        const themeIconMoon = document.getElementById('themeIconMoon');
+        const languageToggleBtn = document.getElementById('languageToggleBtn');
+        const userManualBtn = document.getElementById('userManualBtn');
+        const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+        const currentTimePrefix = document.getElementById('currentTimePrefix');
+        const examTimeLeftDisplay = document.getElementById('examTimeLeftDisplay');
+        const quickEditTimerOverlay = document.getElementById('quickEditTimerOverlay');
+        const quickEditHoursInput = document.getElementById('quickEditHours');
+        const quickEditMinutesInput = document.getElementById('quickEditMinutes');
+        const quickEditSecondsInput = document.getElementById('quickEditSeconds');
+        const quickEditSetBtn = document.getElementById('quickEditSetBtn');
+        const quickEditCancelBtn = document.getElementById('quickEditCancelBtn');
+        const increaseFontBtn = document.getElementById('increaseFontBtn');
+        const decreaseFontBtn = document.getElementById('decreaseFontBtn');
+        const fullscreenToggleBtn = document.getElementById('fullscreenToggleBtn');
+        const fullscreenIconOpen = document.getElementById('fullscreenIconOpen');
+        const fullscreenIconClose = document.getElementById('fullscreenIconClose');
+        const plusMinuteBtn = document.getElementById('plusMinuteBtn');
+        const minusMinuteBtn = document.getElementById('minusMinuteBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const confirmSettingsBtn = document.getElementById('confirmSettingsBtn');
+        const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+        const modalDownloadHtmlBtn = document.getElementById('modalDownloadHtmlBtn');
+        const modalSchoolInfoName = document.getElementById('modalSchoolInfoName');
+        const modalSchoolInfoCentreNumber = document.getElementById('modalSchoolInfoCentreNumber');
+        const modalInfoSubject = document.getElementById('modalInfoSubject');
+        const modalInfoPaper = document.getElementById('modalInfoPaper');
+        const modalFooterExamMinutes = document.getElementById('modalFooterExamMinutes');
+        const modalExamStartTimeInput = document.getElementById('modalExamStartTime');
+        const modalExamEndTimeInput = document.getElementById('modalExamEndTime');
+        const modalSelectedExamLanguageInput = document.getElementById('modalSelectedExamLanguage');
+        const modalLangButtons = settingsModal.querySelectorAll('.lang-btn');
+        const examInfoDisplayPanel = document.getElementById('examInfoDisplayPanel');
+        const startExamBtn = document.getElementById('startExamBtn');
+        const stopExamBtn = document.getElementById('stopExamBtn');
+        const resetExamBtn = document.getElementById('resetExamBtn');
+
+        const customAlertModal = document.getElementById('customAlertModal');
+        const customAlertModalMessage = document.getElementById('customAlertModalMessage');
+        const customAlertModalActions = document.getElementById('customAlertModalActions');
+
+        const userManualModal = document.getElementById('userManualModal');
+        const userManualModalTitle = document.getElementById('userManualModalTitle');
+        const userManualModalContentArea = document.getElementById('userManualModalContentArea');
+        const closeUserManualBtn = document.getElementById('closeUserManualBtn');
+
+
+        async function saveToFirestore(collectionPath, docId, data) {
+            if (!fbDb || !userId) { console.warn("Firestore not ready or no user ID for saving."); return; }
+            try {
+                const docRef = doc(fbDb, ...collectionPath, docId);
+                await setDoc(docRef, { ...data, lastUpdated: serverTimestamp() }, { merge: true });
+            } catch (error) {
+                console.error("Error saving to Firestore:", error);
+                showCustomAlert(uiStrings[currentLanguage].generalError);
+            }
+        }
+
+        async function loadFromFirestore(collectionPath, docId) {
+            if (!fbDb || !userId) { console.warn("Firestore not ready or no user ID for loading."); return null; }
+            try {
+                const docRef = doc(fbDb, ...collectionPath, docId);
+                const docSnap = await getDoc(docRef);
+                return docSnap.exists() ? docSnap.data() : null;
+            } catch (error) {
+                console.error("Error loading from Firestore:", error);
+                showCustomAlert(uiStrings[currentLanguage].generalError);
+                return null;
+            }
+        }
+
+        function showCustomAlert(message, onOk) {
+            const S = uiStrings[currentLanguage];
+            customAlertModalMessage.textContent = message;
+            customAlertModalActions.innerHTML = `<button id="customAlertModalOkBtn" class="control-button btn-modal-confirm-action">${S.okBtn}</button>`;
+            customAlertModal.style.display = 'flex';
+            document.getElementById('customAlertModalOkBtn').onclick = () => {
+                customAlertModal.style.display = 'none';
+                if (onOk) onOk();
+            };
+        }
+
+        async function saveUserPreferences() {
+            if (!isAuthReady) return;
+            const prefs = {
+                theme: currentTheme,
+                language: currentLanguage,
+                fontScale: currentFontScaleFactor
+            };
+            await saveToFirestore(['artifacts', appId, 'users', userId, 'examTimerPreferences'], 'settings', prefs);
+        }
+
+        async function loadUserPreferences() {
+            if (!isAuthReady) return;
+            const prefs = await loadFromFirestore(['artifacts', appId, 'users', userId, 'examTimerPreferences'], 'settings');
+            if (prefs) {
+                currentTheme = prefs.theme || 'theme-dark';
+                currentLanguage = prefs.language || 'en';
+                currentFontScaleFactor = prefs.fontScale || 1;
+                bodyElement.className = currentTheme;
+                updateFontSize();
+            }
+            themeIconSun.style.display = currentTheme === 'theme-dark' ? 'block' : 'none';
+            themeIconMoon.style.display = currentTheme === 'theme-light' ? 'block' : 'none';
+        }
+
+        async function saveLastExamSetup() {
+            if (!isAuthReady || !detailsConfirmed) return;
+            const setupToSave = {
+                centreName: confirmedExamDetails.centreName,
+                centreNumber: confirmedExamDetails.centreNumber,
+                subject: confirmedExamDetails.subject,
+                paper: confirmedExamDetails.paper,
+                durationM: confirmedExamDetails.durationM,
+                userStartTime: confirmedExamDetails.userStartTime,
+                userEndTime: confirmedExamDetails.userEndTime,
+                examLanguage: confirmedExamDetails.examLanguage
+            };
+            await saveToFirestore(['artifacts', appId, 'users', userId, 'examTimerLastSetup'], 'details', setupToSave);
+        }
+
+        async function loadLastExamSetup() {
+            if (!isAuthReady) return;
+            const lastSetup = await loadFromFirestore(['artifacts', appId, 'users', userId, 'examTimerLastSetup'], 'details');
+            const S_current = uiStrings[currentLanguage];
+
+            if (lastSetup) {
+                confirmedExamDetails.centreName = lastSetup.centreName || S_current.schoolInfoNamePlaceholder;
+                confirmedExamDetails.centreNumber = lastSetup.centreNumber || "";
+                confirmedExamDetails.subject = lastSetup.subject || S_current.infoSubjectPlaceholder;
+                confirmedExamDetails.paper = lastSetup.paper || S_current.infoPaperPlaceholder;
+                confirmedExamDetails.durationM = lastSetup.durationM || "90";
+                confirmedExamDetails.userStartTime = lastSetup.userStartTime || "08:30";
+                confirmedExamDetails.examLanguage = lastSetup.examLanguage || currentLanguage;
+                detailsConfirmed = true;
+            } else {
+                confirmedExamDetails.centreName = S_current.schoolInfoNamePlaceholder;
+                confirmedExamDetails.centreNumber = "";
+                confirmedExamDetails.subject = S_current.infoSubjectPlaceholder;
+                confirmedExamDetails.paper = S_current.infoPaperPlaceholder;
+                confirmedExamDetails.durationM = "90";
+                confirmedExamDetails.userStartTime = "08:30";
+                confirmedExamDetails.examLanguage = currentLanguage;
+            }
+            confirmedExamDetails.durationH = "0";
+            confirmedExamDetails.durationS = "0";
+            confirmedExamDetails.userEndTime = calculateEndTime(confirmedExamDetails.userStartTime, 0, parseInt(confirmedExamDetails.durationM), 0);
+        }
+
+
+        function formatTimeHM(date) { if (!date) return '--:--'; return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
+        function formatTimeHMS(totalSeconds) {
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function formatDurationToHoursMinutes(totalMinutesInput) {
+            const totalMinutes = parseInt(totalMinutesInput);
+            const S = uiStrings[currentLanguage];
+
+            if (isNaN(totalMinutes) || totalMinutes < 0) {
+                 return `0 ${S.minutesUnit || 'minutes'}`;
+            }
+
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+
+            let result = "";
+            if (hours > 0) {
+                result += `${hours} ${hours === 1 ? (S.hourUnit || 'hour') : (S.hoursUnit || 'hours')}`;
+            }
+            if (minutes > 0) {
+                if (hours > 0) result += " ";
+                result += `${minutes} ${minutes === 1 ? (S.minuteUnit || 'minute') : (S.minutesUnit || 'minutes')}`;
+            }
+            if (result === "") {
+                return `0 ${S.minutesUnit || 'minutes'}`;
+            }
+            return result;
+        }
+
+
+        function playNotificationSound() { Tone.start().then(() => { synth.triggerAttackRelease("C5", "0.5s"); setTimeout(() => synth.triggerAttackRelease("G5", "0.5s"), 300); }).catch(e => console.error("Tone.js start error:", e)); }
+
+        function calculateEndTime(startTimeStr, durationH, durationM, durationS) {
+            if (!startTimeStr) return "";
+            const [startH, startMin] = startTimeStr.split(':').map(Number);
+            if (isNaN(startH) || isNaN(startMin)) return "";
+
+            const startDate = new Date(1970, 0, 1, startH, startMin, 0);
+            const totalDurationSeconds = (parseInt(durationH || 0) * 3600) + (parseInt(durationM || 0) * 60) + (parseInt(durationS || 0));
+            const durationMillis = totalDurationSeconds * 1000;
+            const endDate = new Date(startDate.getTime() + durationMillis);
+            return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+        }
+
+
+        function updateUIMode() {
+            const S = uiStrings[currentLanguage];
+            if (detailsConfirmed) {
+                setupExamBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`;
+                setupExamBtn.title = S.editDetailsBtn;
+                examInfoDisplayPanel.style.display = 'grid';
+            } else {
+                setupExamBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.137-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /> <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /> </svg>`;
+                setupExamBtn.title = S.setupExamBtn;
+                examInfoDisplayPanel.style.display = 'none';
+            }
+            startExamBtn.disabled = isTimerRunning;
+            plusMinuteBtn.style.opacity = detailsConfirmed || !isTimerRunning ? '1' : '0';
+            plusMinuteBtn.style.pointerEvents = detailsConfirmed || !isTimerRunning ? 'auto' : 'none';
+            plusMinuteBtn.disabled = isTimerRunning;
+            minusMinuteBtn.style.opacity = detailsConfirmed || !isTimerRunning ? '1' : '0';
+            minusMinuteBtn.style.pointerEvents = detailsConfirmed || !isTimerRunning ? 'auto' : 'none';
+            minusMinuteBtn.disabled = isTimerRunning;
+            languageToggleBtn.disabled = isTimerRunning;
+            userManualBtn.disabled = isTimerRunning;
+        }
+
+        function openSettingsModal() {
+            const S = uiStrings[currentLanguage];
+            modalSchoolInfoName.textContent = confirmedExamDetails.centreName;
+            modalSchoolInfoCentreNumber.textContent = confirmedExamDetails.centreNumber || S.schoolInfoCentreNumberPlaceholder;
+            modalInfoSubject.textContent = confirmedExamDetails.subject;
+            modalInfoPaper.textContent = confirmedExamDetails.paper;
+
+            modalSelectedExamLanguageInput.value = confirmedExamDetails.examLanguage || currentLanguage;
+            modalLangButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === modalSelectedExamLanguageInput.value);
+            });
+
+            modalFooterExamMinutes.value = String(confirmedExamDetails.durationM || 90);
+            modalExamStartTimeInput.value = confirmedExamDetails.userStartTime || "08:30";
+
+            modalExamEndTimeInput.value = calculateEndTime(
+                modalExamStartTimeInput.value,
+                0,
+                parseInt(modalFooterExamMinutes.value),
+                0
+            );
+            settingsModal.classList.add('active');
+        }
+
+        function closeSettingsModal() {
+            settingsModal.classList.remove('active');
+        }
+
+        setupExamBtn.addEventListener('click', openSettingsModal);
+        cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+
+        confirmSettingsBtn.addEventListener('click', async () => {
+            const m = parseInt(modalFooterExamMinutes.value) || 0;
+            const isGeneralTimerSetup = (modalInfoSubject.textContent === uiStrings[currentLanguage].infoSubjectPlaceholder || modalInfoSubject.textContent.trim() === "--" || modalInfoSubject.textContent.trim() === "");
+
+            if (m <= 0 && !isGeneralTimerSetup ) {
+                modalFooterExamMinutes.style.borderColor = 'var(--danger-color)';
+                setTimeout(() => modalFooterExamMinutes.style.borderColor = 'var(--input-border-color)', 1500);
+                return;
+            }
+            detailsConfirmed = true;
+
+            confirmedExamDetails.centreName = modalSchoolInfoName.textContent;
+            confirmedExamDetails.centreNumber = modalSchoolInfoCentreNumber.textContent;
+            confirmedExamDetails.subject = modalInfoSubject.textContent;
+            confirmedExamDetails.paper = modalInfoPaper.textContent;
+            confirmedExamDetails.durationM = modalFooterExamMinutes.value;
+            confirmedExamDetails.durationH = "0";
+            confirmedExamDetails.durationS = "0";
+            confirmedExamDetails.userStartTime = modalExamStartTimeInput.value;
+            confirmedExamDetails.userEndTime = modalExamEndTimeInput.value;
+            confirmedExamDetails.examLanguage = modalSelectedExamLanguageInput.value;
+
+            populateExamInfoDisplayPanel();
+            await saveLastExamSetup();
+
+            closeSettingsModal();
+            updateUIMode();
+            setTimerControlsState(isTimerRunning);
+        });
+
+        function populateExamInfoDisplayPanel() {
+            const S = uiStrings[currentLanguage];
+            const examLangText = confirmedExamDetails.examLanguage === 'en' ? S.langBtnEnglish : S.langBtnChinese;
+
+            let examTimeText = "--:-- - --:--";
+            if (confirmedExamDetails.userStartTime && confirmedExamDetails.userEndTime) {
+                examTimeText = `${confirmedExamDetails.userStartTime} - ${confirmedExamDetails.userEndTime}`;
+            } else if (confirmedExamDetails.userStartTime) {
+                const endTime = calculateEndTime(confirmedExamDetails.userStartTime, 0, parseInt(confirmedExamDetails.durationM), 0);
+                examTimeText = `${confirmedExamDetails.userStartTime} - ${endTime}`;
+                confirmedExamDetails.userEndTime = endTime;
+            }
+
+            const durationForDisplay = formatDurationToHoursMinutes(parseInt(confirmedExamDetails.durationM));
+
+            examInfoDisplayPanel.innerHTML = `
+                <div class="info-display-item"><span class="label" data-key="headerCentreNameLabel">${S.headerCentreNameLabel}</span><span class="data">${confirmedExamDetails.centreName}</span></div>
+                <div class="info-display-item"><span class="label" data-key="headerCentreNumLabel">${S.headerCentreNumLabel}</span><span class="data">${confirmedExamDetails.centreNumber}</span></div>
+                <div class="info-display-item"><span class="label" data-key="footerSubjectLabel">${S.footerSubjectLabel}</span><span class="data">${confirmedExamDetails.subject}</span></div>
+                <div class="info-display-item"><span class="label" data-key="footerPaperLabel">${S.footerPaperLabel}</span><span class="data">${confirmedExamDetails.paper}</span></div>
+                <div class="info-display-item"><span class="label" data-key="footerDurationLabel">${S.footerDurationLabel}</span><span class="data">${durationForDisplay}</span></div>
+                <div class="info-display-item"><span class="label" data-key="footerExamTimeLabel">${S.footerExamTimeLabel}</span><span class="data">${examTimeText}</span></div>
+                <div class="info-display-item"><span class="label" data-key="modalExamLanguageLabel">${S.modalExamLanguageLabel}</span><span class="data" data-lang-value="${confirmedExamDetails.examLanguage}">${examLangText}</span></div>
+            `;
+            examTotalSeconds = parseInt(confirmedExamDetails.durationM) * 60;
+            examSecondsRemaining = examTotalSeconds;
+            examTimeLeftDisplay.textContent = formatTimeHMS(examSecondsRemaining);
+            updateTimerDisplay();
+        }
+
+        function updateFontSize() {
+            docElement.style.setProperty('--font-scale-factor', currentFontScaleFactor);
+        }
+        increaseFontBtn.addEventListener('click', () => {
+            currentFontScaleFactor = Math.min(MAX_FONT_SCALE, currentFontScaleFactor + FONT_SCALE_STEP);
+            updateFontSize();
+            saveUserPreferences();
+        });
+        decreaseFontBtn.addEventListener('click', () => {
+            currentFontScaleFactor = Math.max(MIN_FONT_SCALE, currentFontScaleFactor - FONT_SCALE_STEP);
+            updateFontSize();
+            saveUserPreferences();
+        });
+
+        function toggleFullScreen() {
+             if (!document.fullscreenElement) {
+                docElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+        fullscreenToggleBtn.addEventListener('click', toggleFullScreen);
+        document.addEventListener('fullscreenchange', () => {
+            const isFullscreen = !!document.fullscreenElement;
+            fullscreenIconOpen.style.display = isFullscreen ? 'none' : 'block';
+            fullscreenIconClose.style.display = isFullscreen ? 'block' : 'none';
+        });
+
+        modalDownloadHtmlBtn.addEventListener('click', () => {
+            const fullHtml = document.documentElement.outerHTML;
+            const blob = new Blob([fullHtml], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'exam_timer_app.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        });
+
+        themeToggleBtn.addEventListener('click', () => {
+            bodyElement.classList.toggle('theme-light');
+            bodyElement.classList.toggle('theme-dark');
+            currentTheme = bodyElement.classList.contains('theme-dark') ? 'theme-dark' : 'theme-light';
+            themeIconSun.style.display = currentTheme === 'theme-dark' ? 'block' : 'none';
+            themeIconMoon.style.display = currentTheme === 'theme-light' ? 'block' : 'none';
+            updateUILanguage();
+            saveUserPreferences();
+        });
+
+        languageToggleBtn.addEventListener('click', () => {
+            if (isTimerRunning && detailsConfirmed) return;
+            currentLanguage = (currentLanguage === 'en') ? 'zh-HK' : 'en';
+            updateUILanguage();
+            const S = uiStrings[currentLanguage];
+            if (confirmedExamDetails.centreName === uiStrings[currentLanguage === 'en' ? 'zh-HK' : 'en'].schoolInfoNamePlaceholder) {
+                confirmedExamDetails.centreName = S.schoolInfoNamePlaceholder;
+            }
+            if (confirmedExamDetails.subject === uiStrings[currentLanguage === 'en' ? 'zh-HK' : 'en'].infoSubjectPlaceholder) {
+                confirmedExamDetails.subject = S.infoSubjectPlaceholder;
+            }
+             if (confirmedExamDetails.paper === uiStrings[currentLanguage === 'en' ? 'zh-HK' : 'en'].infoPaperPlaceholder) {
+                confirmedExamDetails.paper = S.infoPaperPlaceholder;
+            }
+
+            if (detailsConfirmed) {
+                populateExamInfoDisplayPanel();
+            }
+            saveUserPreferences();
+        });
+
+        function updateSingleElementLanguage(el, key) {
+            const S = uiStrings[currentLanguage];
+            if (S[key]) {
+                if (el.title && el.dataset.key === key) {
+                    el.title = S[key];
+                } else {
+                    const textSpan = el.querySelector('span[data-key]');
+                    if (textSpan && textSpan.dataset.key === key) {
+                        textSpan.textContent = S[key];
+                    } else if (el.dataset.key === key) {
+                         el.textContent = S[key];
+                    }
+                }
+            }
+        }
+
+        function updateUILanguage() {
+            const S = uiStrings[currentLanguage];
+            currentTimePrefix.textContent = S.currentTimePrefix || "";
+            document.querySelectorAll('[data-key]').forEach(el => {
+                 updateSingleElementLanguage(el, el.dataset.key);
+                 if (el.dataset.key === 'modalDurationLabel' && el.closest('.duration-container strong')) {
+                     el.textContent = S.modalDurationLabel;
+                 }
+                 if (el.dataset.key === 'modalGroupExamLanguage' && el.classList.contains('group-title')) {
+                     el.textContent = S.modalGroupExamLanguage;
+                 }
+                 if (el.dataset.key === 'modalExamLanguageLabel' && !el.classList.contains('group-title') && el.closest('.settings-group .detail-item strong') ) {
+                     el.textContent = S.modalExamLanguageLabel;
+                 }
+                 if (el.dataset.key === 'downloadBtnText' && el.closest('#modalDownloadHtmlBtn span')) {
+                    el.textContent = S.downloadBtnText;
+                 }
+                 if (el.dataset.key === 'userManualBtn' && el.closest('#userManualBtn')) {
+                    el.title = S.userManualBtn;
+                 }
+                 if (el.dataset.key === 'appFooterText' && el.closest('.app-footer span')) {
+                    el.textContent = S.appFooterText;
+                 }
+
+
+            });
+
+            themeToggleBtn.title = currentTheme === 'theme-dark' ? S.switchToLight : S.switchToDark;
+            languageToggleBtn.title = currentLanguage === 'en' ? S.switchToChinese : S.switchToEnglish;
+            setupExamBtn.title = detailsConfirmed ? S.editDetailsBtn : S.setupExamBtn;
+
+            const modalPlaceholders = {
+                modalSchoolInfoName: S.schoolInfoNamePlaceholder,
+                modalSchoolInfoCentreNumber: S.schoolInfoCentreNumberPlaceholder,
+                modalInfoSubject: S.infoSubjectPlaceholder,
+                modalInfoPaper: S.infoPaperPlaceholder
+            };
+
+            for (const id in modalPlaceholders) {
+                const el = document.getElementById(id);
+                if (el) {
+                    const placeholderKey = el.dataset.key;
+                    el.dataset.placeholder = S[placeholderKey];
+                    const currentText = el.textContent.trim();
+                    const otherLangKey = currentLanguage === 'en' ? 'zh-HK' : 'en';
+                    const oldPlaceholderOtherLang = uiStrings[otherLangKey]?.[placeholderKey];
+
+                    if ( (id === 'modalSchoolInfoName' && currentText === uiStrings[otherLangKey]?.schoolInfoNamePlaceholder) ||
+                         (id === 'modalInfoSubject' && currentText === uiStrings[otherLangKey]?.infoSubjectPlaceholder) ||
+                         (id === 'modalInfoPaper' && currentText === uiStrings[otherLangKey]?.infoPaperPlaceholder) ||
+                         currentText === "" || currentText === "--" ||
+                         (oldPlaceholderOtherLang && currentText === oldPlaceholderOtherLang)
+                       ) {
+                        el.textContent = S[placeholderKey];
+                    }
+                }
+            }
+            if (userManualModal.style.display === 'flex') {
+                populateUserManual();
+            }
+        }
+
+        [modalExamStartTimeInput, modalFooterExamMinutes].forEach(input => {
+            input.addEventListener('change', () => {
+                const m = parseInt(modalFooterExamMinutes.value) || 0;
+                modalExamEndTimeInput.value = calculateEndTime(modalExamStartTimeInput.value, 0, m, 0);
+            });
+        });
+
+
+        modalLangButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                modalLangButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                modalSelectedExamLanguageInput.value = button.dataset.lang;
+            });
+        });
+
+        function updateCurrentTime() {
+            const now = new Date();
+            currentTimeDisplay.textContent = now.toLocaleTimeString('en-GB', {
+                timeZone: 'Asia/Hong_Kong',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+
+        [modalSchoolInfoName, modalSchoolInfoCentreNumber, modalInfoSubject, modalInfoPaper].forEach(span => {
+            span.addEventListener('blur', () => {
+                 if (span.contentEditable === 'true') {
+                    if (span.textContent.trim() === "") {
+                        span.textContent = span.dataset.placeholder || '--';
+                    }
+                }
+            });
+            span.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    span.blur();
+                }
+            });
+        });
+
+        function setTimerControlsState(running) {
+            isTimerRunning = running;
+            startExamBtn.disabled = running || (!detailsConfirmed && examTotalSeconds <= 0 && (parseInt(modalFooterExamMinutes.value) || 0) <=0 );
+            stopExamBtn.disabled = !running;
+            resetExamBtn.disabled = running;
+
+            const showAdjust = detailsConfirmed || !isTimerRunning;
+            plusMinuteBtn.style.opacity = showAdjust ? '1' : '0';
+            plusMinuteBtn.style.pointerEvents = showAdjust ? 'auto' : 'none';
+            plusMinuteBtn.disabled = !showAdjust || running;
+            minusMinuteBtn.style.opacity = showAdjust ? '1' : '0';
+            minusMinuteBtn.style.pointerEvents = showAdjust ? 'auto' : 'none';
+            minusMinuteBtn.disabled = !showAdjust || running;
+        }
+
+        function startTimer() {
+            // Ensure examTotalSeconds is based on the most recent input (quick edit or modal)
+            if (!isTimerRunning) { // Only recalculate if timer is not already running
+                if (quickEditTimerOverlay.classList.contains('active')) {
+                    // If quick edit was used, examTotalSeconds is already set by its 'Set' button
+                } else if (detailsConfirmed) {
+                    examTotalSeconds = parseInt(confirmedExamDetails.durationM) * 60;
+                } else {
+                    const m = parseInt(modalFooterExamMinutes.value) || 0;
+                    examTotalSeconds = m * 60;
+                     if (m > 0) { // If starting without prior confirmation, use modal values
+                        const S_current = uiStrings[currentLanguage];
+                        confirmedExamDetails.centreName = modalSchoolInfoName.textContent || S_current.schoolInfoNamePlaceholder;
+                        confirmedExamDetails.centreNumber = modalSchoolInfoCentreNumber.textContent || S_current.schoolInfoCentreNumberPlaceholder;
+                        confirmedExamDetails.subject = modalInfoSubject.textContent || S_current.infoSubjectPlaceholder;
+                        confirmedExamDetails.paper = modalInfoPaper.textContent || S_current.infoPaperPlaceholder;
+                        confirmedExamDetails.durationM = String(m);
+                        confirmedExamDetails.userStartTime = modalExamStartTimeInput.value || "08:30";
+                        confirmedExamDetails.examLanguage = modalSelectedExamLanguageInput.value;
+                        confirmedExamDetails.userEndTime = calculateEndTime(confirmedExamDetails.userStartTime, 0, m, 0);
+                        detailsConfirmed = true; // Treat as confirmed for this run
+                        populateExamInfoDisplayPanel();
+                    }
+                }
+            }
+
+
+            if (examTotalSeconds <= 0) {
+                console.warn("Timer duration is zero or less. Cannot start.");
+                examTimeLeftDisplay.textContent = formatTimeHMS(0);
+                return;
+            }
+
+            examSecondsRemaining = examTotalSeconds;
+            examStartTime = new Date();
+            const actualExamEndTime = new Date(examStartTime.getTime() + examTotalSeconds * 1000);
+
+            const displayExamTimeEl = examInfoDisplayPanel.querySelector('#displayInfoExamTime');
+            if (displayExamTimeEl && detailsConfirmed) {
+                if (confirmedExamDetails.userStartTime && confirmedExamDetails.userEndTime) {
+                    displayExamTimeEl.textContent = `${confirmedExamDetails.userStartTime} - ${confirmedExamDetails.userEndTime}`;
+                } else if (confirmedExamDetails.userStartTime) {
+                     const configuredEndTime = calculateEndTime(confirmedExamDetails.userStartTime, 0, parseInt(confirmedExamDetails.durationM), 0);
+                     displayExamTimeEl.textContent = `${confirmedExamDetails.userStartTime} - ${configuredEndTime}`;
+                } else {
+                    displayExamTimeEl.textContent = `${formatTimeHM(examStartTime)} - ${formatTimeHM(actualExamEndTime)}`;
+                }
+            }
+            if (examInfoDisplayPanel.style.display === 'none' && examTotalSeconds > 0 && detailsConfirmed) {
+                 examInfoDisplayPanel.style.display = 'grid';
+            }
+
+
+            updateTimerDisplay();
+            setTimerControlsState(true);
+            languageToggleBtn.disabled = true;
+            userManualBtn.disabled = true;
+
+            clearInterval(examTimerInterval);
+            examTimerInterval = setInterval(tickExamTimer, 1000);
+        }
+        startExamBtn.addEventListener('click', startTimer);
+
+        function stopTimerActions() {
+            clearInterval(examTimerInterval);
+            isTimerRunning = false;
+            setTimerControlsState(false);
+            languageToggleBtn.disabled = false;
+            userManualBtn.disabled = false;
+        }
+        stopExamBtn.addEventListener('click', () => { stopTimerActions(); });
+
+        resetExamBtn.addEventListener('click', () => {
+            stopTimerActions();
+            if (detailsConfirmed) {
+                examTotalSeconds = parseInt(confirmedExamDetails.durationM) * 60;
+                const displayExamTimeEl = examInfoDisplayPanel.querySelector('#displayInfoExamTime');
+                if(displayExamTimeEl) {
+                     if (confirmedExamDetails.userStartTime && confirmedExamDetails.userEndTime) {
+                        displayExamTimeEl.textContent = `${confirmedExamDetails.userStartTime} - ${confirmedExamDetails.userEndTime}`;
+                    } else if (confirmedExamDetails.userStartTime) {
+                         const endTime = calculateEndTime(confirmedExamDetails.userStartTime, 0, parseInt(confirmedExamDetails.durationM), 0);
+                        displayExamTimeEl.textContent = `${confirmedExamDetails.userStartTime} - ${endTime}`;
+                    } else {
+                        displayExamTimeEl.textContent = '--:-- - --:--';
+                    }
+                }
+            } else {
+                const S_init = uiStrings[currentLanguage];
+                modalFooterExamMinutes.value = "90";
+                examTotalSeconds = 90 * 60;
+                modalSchoolInfoName.textContent = S_init.schoolInfoNamePlaceholder;
+                modalInfoSubject.textContent = S_init.infoSubjectPlaceholder;
+                modalInfoPaper.textContent = S_init.infoPaperPlaceholder;
+                modalExamStartTimeInput.value = "08:30";
+                modalExamEndTimeInput.value = calculateEndTime("08:30", 0, 90, 0);
+
+            }
+            examSecondsRemaining = examTotalSeconds;
+            examStartTime = null;
+            examEndTime = null;
+
+            updateTimerDisplay();
+            examTimeLeftDisplay.textContent = formatTimeHMS(examTotalSeconds);
+            setTimerControlsState(false);
+        });
+
+        function tickExamTimer() {
+            if (examSecondsRemaining > 0) {
+                examSecondsRemaining--;
+                updateTimerDisplay();
+            } else {
+                clearInterval(examTimerInterval);
+                playNotificationSound();
+                examTimeLeftDisplay.textContent = formatTimeHMS(0);
+                isTimerRunning = false;
+                setTimerControlsState(false);
+                resetExamBtn.disabled = false;
+                stopExamBtn.disabled = true;
+                languageToggleBtn.disabled = false;
+                userManualBtn.disabled = false;
+            }
+        }
+        function updateTimerDisplay() {
+            examTimeLeftDisplay.textContent = formatTimeHMS(examSecondsRemaining);
+        }
+
+        plusMinuteBtn.addEventListener('click', () => {
+            if (isTimerRunning) return;
+            examTotalSeconds += 60;
+            examSecondsRemaining = examTotalSeconds;
+
+            const totalMinutes = Math.floor(examTotalSeconds / 60);
+
+            if(detailsConfirmed){
+                confirmedExamDetails.durationM = String(totalMinutes);
+                confirmedExamDetails.durationH = "0";
+                confirmedExamDetails.durationS = "0";
+                populateExamInfoDisplayPanel();
+            }
+            modalFooterExamMinutes.value = String(totalMinutes);
+            updateTimerDisplay();
+        });
+        minusMinuteBtn.addEventListener('click', () => {
+             if (isTimerRunning) return;
+            if (examTotalSeconds >= 60) {
+                examTotalSeconds -= 60;
+                examSecondsRemaining = examTotalSeconds;
+                const totalMinutes = Math.floor(examTotalSeconds / 60);
+                if(detailsConfirmed){
+                    confirmedExamDetails.durationM = String(totalMinutes);
+                    confirmedExamDetails.durationH = "0";
+                    confirmedExamDetails.durationS = "0";
+                    populateExamInfoDisplayPanel();
+                }
+                modalFooterExamMinutes.value = String(totalMinutes);
+                updateTimerDisplay();
+            }
+        });
+
+        [quickEditHoursInput, quickEditMinutesInput, quickEditSecondsInput].forEach(input => {
+            input.addEventListener('blur', () => {
+                if (input.value.length === 1 && /^\d$/.test(input.value)) {
+                    input.value = "0" + input.value;
+                } else if (input.value === "") {
+                    input.value = "00";
+                }
+            });
+        });
+
+
+        examTimeLeftDisplay.addEventListener('click', () => {
+            if (isTimerRunning) return;
+            const h = Math.floor(examSecondsRemaining / 3600);
+            const m = Math.floor((examSecondsRemaining % 3600) / 60);
+            const s = examSecondsRemaining % 60;
+            quickEditHoursInput.value = String(h).padStart(2,'0');
+            quickEditMinutesInput.value = String(m).padStart(2,'0');
+            quickEditSecondsInput.value = String(s).padStart(2,'0');
+            quickEditTimerOverlay.classList.add('active');
+        });
+        quickEditSetBtn.addEventListener('click', () => {
+            const h = parseInt(quickEditHoursInput.value) || 0;
+            const m = parseInt(quickEditMinutesInput.value) || 0;
+            const s = parseInt(quickEditSecondsInput.value) || 0;
+            const newTotalSeconds = (h * 3600) + (m * 60) + s;
+
+            if (newTotalSeconds >= 0) {
+                examTotalSeconds = newTotalSeconds;
+                examSecondsRemaining = newTotalSeconds;
+                updateTimerDisplay();
+
+                const totalMinutesFromQuickEdit = Math.floor(newTotalSeconds / 60);
+                if (detailsConfirmed) {
+                    confirmedExamDetails.durationM = String(totalMinutesFromQuickEdit);
+                    confirmedExamDetails.durationH = "0";
+                    confirmedExamDetails.durationS = "0";
+                    if(confirmedExamDetails.userStartTime) {
+                        // Recalculate end time based on the full H:M:S for display if start time is set
+                        confirmedExamDetails.userEndTime = calculateEndTime(confirmedExamDetails.userStartTime, h, m, s);
+                    }
+                    // populateExamInfoDisplayPanel(); // Avoid full repopulation to keep HH:MM:SS from quick edit
+                }
+                modalFooterExamMinutes.value = String(totalMinutesFromQuickEdit);
+            }
+            quickEditTimerOverlay.classList.remove('active');
+        });
+        quickEditCancelBtn.addEventListener('click', () => { quickEditTimerOverlay.classList.remove('active'); });
+        document.addEventListener('click', (event) => {
+            if (quickEditTimerOverlay.classList.contains('active') &&
+                !quickEditTimerOverlay.contains(event.target) &&
+                event.target !== examTimeLeftDisplay &&
+                !examTimeLeftDisplay.contains(event.target)
+                ) {
+                quickEditTimerOverlay.classList.remove('active');
+            }
+        });
+
+        function populateUserManual() {
+            const S = uiStrings[currentLanguage];
+            userManualModalTitle.textContent = S.userManualTitle;
+            userManualModalContentArea.innerHTML = S.userManualContent;
+        }
+
+        userManualBtn.addEventListener('click', () => {
+            populateUserManual();
+            userManualModal.style.display = 'flex';
+        });
+
+        closeUserManualBtn.addEventListener('click', () => {
+            userManualModal.style.display = 'none';
+        });
+        userManualModal.addEventListener('click', (event) => {
+            if (event.target === userManualModal) {
+                userManualModal.style.display = 'none';
+            }
+        });
+
+
+        async function setupAppLogic() {
+            if (fbAuth) {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(fbAuth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(fbAuth);
+                    }
+                } catch (error) {
+                    console.error("Firebase Authentication Error:", error);
+                    showCustomAlert("Authentication failed. Some features might be unavailable.");
+                }
+
+                onAuthStateChanged(fbAuth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        console.log("User authenticated with UID:", userId);
+
+                        await loadUserPreferences();
+                        await loadLastExamSetup();
+
+                        bodyElement.className = currentTheme;
+                        themeIconSun.style.display = currentTheme === 'theme-dark' ? 'block' : 'none';
+                        themeIconMoon.style.display = currentTheme === 'theme-light' ? 'block' : 'none';
+                        updateFontSize();
+                        modalLangButtons.forEach(btn => {
+                            btn.classList.toggle('active', btn.dataset.lang === currentLanguage);
+                        });
+                        if (document.getElementById('modalSelectedExamLanguage')) {
+                             document.getElementById('modalSelectedExamLanguage').value = currentLanguage;
+                        }
+                        updateUILanguage();
+
+
+                        if (!detailsConfirmed) {
+                             const S_init = uiStrings[currentLanguage];
+                             confirmedExamDetails.centreName = S_init.schoolInfoNamePlaceholder;
+                             confirmedExamDetails.subject = S_init.infoSubjectPlaceholder;
+                             confirmedExamDetails.paper = S_init.infoPaperPlaceholder;
+                             confirmedExamDetails.durationM = "90";
+                             confirmedExamDetails.userStartTime = "08:30";
+                             confirmedExamDetails.examLanguage = currentLanguage;
+                             confirmedExamDetails.userEndTime = calculateEndTime(confirmedExamDetails.userStartTime, 0, parseInt(confirmedExamDetails.durationM), 0);
+                        }
+
+
+                        examTotalSeconds = parseInt(confirmedExamDetails.durationM) * 60;
+                        examSecondsRemaining = examTotalSeconds;
+
+                        updateTimerDisplay();
+                        updateUIMode();
+                        if(detailsConfirmed) populateExamInfoDisplayPanel();
+                        setTimerControlsState(false);
+
+                    } else {
+                        isAuthReady = false;
+                        userId = null;
+                        console.log("User is signed out.");
+                        initializeAppDefaults();
+                    }
+                });
+            } else {
+                initializeAppDefaults();
+            }
+        }
+
+        function initializeAppDefaults() {
+            currentTheme = 'theme-dark';
+            currentLanguage = 'en';
+            currentFontScaleFactor = 1;
+
+            const S_init = uiStrings[currentLanguage];
+            confirmedExamDetails = {
+                centreName: S_init.schoolInfoNamePlaceholder,
+                centreNumber: S_init.schoolInfoCentreNumberPlaceholder,
+                subject: S_init.infoSubjectPlaceholder,
+                paper: S_init.infoPaperPlaceholder,
+                durationM: "90",
+                durationH: "0",
+                durationS: "0",
+                userStartTime: "08:30",
+                userEndTime: calculateEndTime("08:30", 0, 90, 0),
+                examLanguage: currentLanguage
+            };
+
+
+            bodyElement.className = currentTheme;
+            themeIconSun.style.display = currentTheme === 'theme-dark' ? 'block' : 'none';
+            themeIconMoon.style.display = currentTheme === 'theme-light' ? 'block' : 'none';
+            updateFontSize();
+            modalLangButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === currentLanguage);
+            });
+             if (document.getElementById('modalSelectedExamLanguage')) {
+                document.getElementById('modalSelectedExamLanguage').value = currentLanguage;
+            }
+            updateUILanguage();
+
+
+            examTotalSeconds = parseInt(confirmedExamDetails.durationM) * 60;
+            examSecondsRemaining = examTotalSeconds;
+            detailsConfirmed = false;
+            isTimerRunning = false;
+
+            updateTimerDisplay();
+            updateUIMode();
+            setTimerControlsState(false);
+        }
+
+        setupAppLogic();
+
+    </script>
+
+
+</body></html>
